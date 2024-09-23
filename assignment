@@ -1,0 +1,105 @@
+#include <stdio.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stddef.h>
+
+#define HEAP_SIZE 128
+#define BLOCK_SIZE 1024
+
+bool block_status[HEAP_SIZE];
+void* heap_start = NULL;
+bool last_malloc = false;
+bool last_free = false;
+
+int best_fit(size_t blocks_needed)
+{
+        int best_fit_start = -1;
+        int best_fit_size = HEAP_SIZE + 1;
+
+        for (int i = 0; i < HEAP_SIZE; i++)
+        {
+                if (!block_status[i])
+                {
+
+                        int j = i;
+                        while (j < HEAP_SIZE && !block_status[j] && (j - i + 1) < best_fit_size)
+                        {
+                                if ((j - i + 1) >= blocks_needed)
+                                {
+                                        if ((j - i + 1) < best_fit_size)
+                                        {
+                                                best_fit_size = j - i + 1;
+                                                best_fit_start = i;
+                                        }
+                                        break;
+                                }
+                                j++;
+                        }
+                }
+        }
+        return best_fit_start;
+}
+void* my_malloc(size_t size)
+{
+        if (last_malloc)
+        {
+                printf("Error: Two consecutive mallocs are not allowed.\n");
+                return NULL;
+        }
+
+        size_t blocks_needed = (size + BLOCK_SIZE - 1) / BLOCK_SIZE;
+
+        int start_block = best_fit(blocks_needed);
+        if (start_block == -1)
+        {
+                printf("Error: Not enough memory available.\n");
+                return NULL;
+        }
+
+        for (int i = start_block; i < start_block + blocks_needed; i++)
+        {
+                block_status[i] = true;
+        }
+
+        last_malloc = true;
+        last_free = false;
+        return (void*)((uintptr_t)heap_start + start_block * BLOCK_SIZE);
+}
+
+void my_free(void* ptr)
+{
+        if (last_free) {
+                printf("Error: Two consecutive frees are not allowed.\n");
+                return;
+        }
+
+        int block_to_free = ((uintptr_t)ptr - (uintptr_t)heap_start) / BLOCK_SIZE;
+
+        if (block_to_free < 0 || block_to_free >= HEAP_SIZE || !block_status[block_to_free]) {
+                printf("Error: Invalid free.\n");
+                return;
+        }
+
+        block_status[block_to_free] = false;
+
+        last_free = true;
+        last_malloc = false;
+}
+
+int main()
+{
+        int size;
+        printf("Enter the Memory size :");
+        scanf("%d",&size);
+
+        void* ptr1 = my_malloc(sizeof(int) * size);
+        //void* ptr2 = my_malloc(sizeof(uint8_t) * size);
+        //void* ptr3 = my_malloc(128 * 8 * size);
+
+        my_free(ptr1);
+        //my_free(ptr2);
+        //my_free(ptr3);
+
+        return 0;
+
+}
